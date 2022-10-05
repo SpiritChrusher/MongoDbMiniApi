@@ -22,16 +22,31 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapGet("/GetDatabesesAsync", async (IMongoRepository mongoRepository) =>
+app.MapGet("AddBeer", (IMongoRepository mongoRepository) =>
 {
-    return await mongoRepository.GetDatabases();
-})
+    var beer = new Beer("HopTopBeer", 5.6, "Ale");
+
+    return Results.Ok(mongoRepository.AddBeerToCollectionAsync(beer));
+});
+
+app.MapGet("GetBeers", (IMongoRepository mongoRepository) =>
+{
+    var beer = mongoRepository.GetBeersFromCollection();
+    return Results.Ok(beer);
+});
+
+app.MapGet("GetBeersAsync", async (IMongoRepository mongoRepository) =>
+{
+    var beer = await mongoRepository.GetBeersFromCollectionAsync();
+    return Results.Ok(beer);
+});
+
+app.MapGet("/GetDatabasesAsyncMaybe", async (IMongoRepository mongoRepository) =>
+    Results.Ok(await mongoRepository.GetDatabases()))
 .WithName("GetDatabases");
 
-app.MapGet("/GetDatabeseNames", (IMongoRepository mongoRepository) =>
-{
-    return mongoRepository.GetDatabaseNames();
-})
-.WithName("GetDatabeseNames");
+app.MapGet("/GetDatabaseNames", (IMongoRepository mongoRepository) =>
+    Results.Ok(mongoRepository.GetDatabaseNames()))
+.WithName("GetDatabaseNames");
 
 app.Run();
