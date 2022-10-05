@@ -1,52 +1,47 @@
 using MongoDbMiniApi;
+using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
-
 var services = builder.Services;
 
 services.Configure<MongoDbOptions>(builder.Configuration.GetSection("MongoDb"));
-//services.AddSingleton(new MongoClient(builder.Configuration.GetSection("MongoDB").GetValue<string>("ConnectionString")));
+services.AddSingleton<IMongoClient, MongoClient>(s =>
+{
+    var url = builder.Configuration.GetSection("MongoDb").GetValue<string>("ConnectionString");
+    return new MongoClient(url);
+});
 services.AddSingleton<IMongoRepository, MongoRepository>();
 services.AddEndpointsApiExplorer();
 services.AddSwaggerGen();
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 app.UseHttpsRedirection();
 
-app.MapGet("AddBeer", (IMongoRepository mongoRepository) =>
+app.MapPost("AddBeer", (IMongoRepository mongoRepository, [FromBody]Beer beerRequest) =>
 {
-    var beer = new Beer("HopTopBeer", 5.6, "Ale");
-
-    return Results.Ok(mongoRepository.AddBeerToCollectionAsync(beer));
-});
-
-app.MapGet("GetBeers", (IMongoRepository mongoRepository) =>
-{
-    var beer = mongoRepository.GetBeersFromCollection();
-    return Results.Ok(beer);
+    mongoRepository.AddBeerToCollectionAsync(beerRequest);
+    return Results.Ok();
 });
 
 app.MapGet("GetBeersAsync", async (IMongoRepository mongoRepository) =>
+    Results.Ok(await mongoRepository.GetBeersFromCollectionAsync()));
+
+app.MapPost("UpdateBeer", async(IMongoRepository mongoRepository, [FromBody]Beer updatedBeer) =>
 {
-    var beer = await mongoRepository.GetBeersFromCollectionAsync();
-    return Results.Ok(beer);
+    await mongoRepository.UpdateBeer(updatedBeer);
+    return Results.Ok();
 });
 
-app.MapGet("/GetDatabasesAsyncMaybe", async (IMongoRepository mongoRepository) =>
-    Results.Ok(await mongoRepository.GetDatabases()))
-.WithName("GetDatabases");
-
-app.MapGet("/GetDatabaseNames", (IMongoRepository mongoRepository) =>
-    Results.Ok(mongoRepository.GetDatabaseNames()))
-.WithName("GetDatabaseNames");
+app.MapDelete("/DeleteDatabaseNames/{id}", async (IMongoRepository mongoRepository, [FromRoute] string id) =>
+{
+    await mongoRepository.DeleteBeer(id);
+    Results.NoContent();
+});
 
 app.Run();

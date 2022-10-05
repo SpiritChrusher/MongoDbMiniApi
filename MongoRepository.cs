@@ -6,44 +6,28 @@ namespace MongoDbMiniApi;
 public interface IMongoRepository
 {
     Task AddBeerToCollectionAsync(Beer beer);
-    Task<List<string>> GetBeersFromCollectionAsync();
-    BsonDocument GetBeersFromCollection();
-    Task<IReadOnlyList<BsonDocument>> GetDatabases();
-    IReadOnlyList<string> GetDatabaseNames();
+    Task<List<Beer>> GetBeersFromCollectionAsync();
+    Task UpdateBeer(Beer updatedBeer);
+    Task DeleteBeer(string id);
 }
 
 public class MongoRepository : IMongoRepository
 {
-    private readonly MongoClient _mongoClient;
     private IMongoDatabase _database;
     private readonly MongoDbOptions _mongoDbOptions;
-    public MongoRepository(IOptions<MongoDbOptions> options)
+    private IMongoCollection<Beer> _mongoCollection;
+    public MongoRepository(IOptions<MongoDbOptions> options, IMongoClient mongoClient)
     {
         _mongoDbOptions = options.Value;
-        _mongoClient = new MongoClient(_mongoDbOptions.ConnectionString);
-        _database = _mongoClient.GetDatabase(_mongoDbOptions.Database);
+        _database = mongoClient.GetDatabase(_mongoDbOptions.Database);
+        _mongoCollection = _database.GetCollection<Beer>(_mongoDbOptions.BeerCollectionName);
     }
 
     public async Task AddBeerToCollectionAsync(Beer beer)
     {
-        //var bsonBeers = beer.ToBsonDocument();
-        var document = new BsonDocument
-            {
-                { "student_id", 10000 },
-                { "scores", new BsonArray
-                    {
-                    new BsonDocument{ {"type", "exam"}, {"score", 88.12334193287023 } },
-                    new BsonDocument{ {"type", "quiz"}, {"score", 74.92381029342834 } }
-                    }
-                },
-                { "class_id", 480}
-            };
-
-        var collection = _database.GetCollection<BsonDocument>("Beers");
         try
         {
-            await collection.InsertOneAsync(document);
-
+            await _mongoCollection.InsertOneAsync(beer);
         }
         catch (Exception)
         {
@@ -51,18 +35,17 @@ public class MongoRepository : IMongoRepository
         }
     }
 
-    public async Task<List<string>> GetBeersFromCollectionAsync()
+    public async Task<List<Beer>> GetBeersFromCollectionAsync()
     {
-        var collection = _database.GetCollection<BsonDocument>("Beers");
         try
         {
-            var asyncCursor = await collection.FindAsync(new BsonDocument());
-            var dbList = new List<string>();
+            var asyncCursor = await _mongoCollection.FindAsync(new BsonDocument());
+            var dbList = new List<Beer>();
             while (await asyncCursor.MoveNextAsync())
             {
-                foreach (var name in asyncCursor.Current)
+                foreach (var beer in asyncCursor.Current)
                 {
-                    dbList.Add(name.ToString());
+                    dbList.Add(beer);
                 }
             }
 
@@ -74,12 +57,37 @@ public class MongoRepository : IMongoRepository
         }
     }
 
-    public BsonDocument GetBeersFromCollection()
+    public async Task UpdateBeer(Beer updatedBeer)
     {
-        var collection = _database.GetCollection<BsonDocument>("Beers");
         try
         {
-            var document = collection.Find(new BsonDocument()).FirstOrDefault();
+            await _mongoCollection.ReplaceOneAsync(b => b.Name == updatedBeer.Name, updatedBeer);
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    public async Task DeleteBeer(string id)
+    {
+        try
+        {
+            await _mongoCollection.DeleteOneAsync(b => b.Name == id);
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    private List<Beer> GetBeersFromCollection()
+    {
+        try
+        {
+            var document = _mongoCollection.Find(new BsonDocument()).ToList();
             
             return document;
         }
@@ -87,33 +95,5 @@ public class MongoRepository : IMongoRepository
         {
             throw;
         }
-    }
-
-    public async Task<IReadOnlyList<BsonDocument>> GetDatabases()
-    {
-        using var asyncCursor = await _mongoClient.ListDatabasesAsync();
-
-        var dbList = new List<BsonDocument>();
-        while (await asyncCursor.MoveNextAsync())
-        {
-            foreach (var name in asyncCursor.Current)
-            {
-                dbList.Add(name);
-            }
-        }
-
-        return dbList;
-    }
-
-    public IReadOnlyList<string> GetDatabaseNames()
-    {
-        var dbList = _mongoClient.ListDatabaseNames().ToList(); 
-
-        Console.WriteLine("The list of databases on this server is: ");
-        foreach (var db in dbList)
-        {
-            Console.WriteLine(db);
-        }
-        return dbList;
     }
 }
