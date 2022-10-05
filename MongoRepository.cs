@@ -7,6 +7,7 @@ public interface IMongoRepository
 {
     Task AddBeerToCollectionAsync(Beer beer);
     Task<List<Beer>> GetBeersFromCollectionAsync();
+    Task<Beer> GetBeerByIdFromCollectionAsync(string id);
     Task UpdateBeer(Beer updatedBeer);
     Task DeleteBeer(string id);
 }
@@ -50,6 +51,19 @@ public class MongoRepository : IMongoRepository
             }
 
             return dbList;
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+    }
+
+    public async Task<Beer> GetBeerByIdFromCollectionAsync(string id)
+    {
+        try
+        {
+            var beer = await _mongoCollection.Find(b => b.Name == id).FirstOrDefaultAsync();
+            return beer;
         }
         catch (Exception)
         {

@@ -32,6 +32,9 @@ app.MapPost("AddBeer", (IMongoRepository mongoRepository, [FromBody]Beer beerReq
 app.MapGet("GetBeersAsync", async (IMongoRepository mongoRepository) =>
     Results.Ok(await mongoRepository.GetBeersFromCollectionAsync()));
 
+app.MapGet("GetBeerAsync/{id}", async (IMongoRepository mongoRepository, [FromRoute] string id) =>
+    Results.Ok(await mongoRepository.GetBeerByIdFromCollectionAsync(id)));
+
 app.MapPost("UpdateBeer", async(IMongoRepository mongoRepository, [FromBody]Beer updatedBeer) =>
 {
     await mongoRepository.UpdateBeer(updatedBeer);
