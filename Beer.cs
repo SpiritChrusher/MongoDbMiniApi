@@ -2,12 +2,6 @@
 
 namespace MongoDbMiniApi;
 
-public record BeerPoco(
-    int Id,
-    string Name,
-    double Alcohol,
-    string Type);
-
 public class Beer
 {
     [BsonId]
@@ -19,8 +13,8 @@ public class Beer
 
     public Beer(string name, double alcohol, string type)
     {
-        Name=name;
-        Alcohol=alcohol;
-        Type=type;
+        Name = name;
+        Alcohol = alcohol;
+        Type = type;
     }
 }
